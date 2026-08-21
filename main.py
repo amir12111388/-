@@ -161,7 +161,7 @@ while True:
                         kb = {"keyboard": [[{"text": "ارسال اعتراف 🔥"}]], "resize_keyboard": True}
                         welcome_text = ("💎 <b>به ربات اعتراف ناشناس خوش آمدید</b>\n\n"
                                         "در این ربات می‌توانید بدون افشای هویت خود، پیام خود را برای مدیریت ارسال کنید.\n\n"
-                                        "📢 کانال رسمی ما: @Eteraf\n\n"
+                                        "📢 کانال رسمی ما: @Eteraf75\n\n"
                                         "👇 برای شروع از دکمه زیر استفاده کنید:")
                         send_message(chat_id, welcome_text, kb)
                         continue
