@@ -1,4 +1,6 @@
-import requests
+import urllib.request
+import urllib.parse
+import urllib.error
 import time
 import json
 import os
@@ -8,6 +10,25 @@ BOT_TOKEN = "518206178:crBnw-E77aTxoIGx0AhOPJ1cr1N7avhcGXM"
 ADMIN_ID = 747113565  # آیدی عددی خودت را اینجا وارد کن
 API_URL = f"https://tapi.bale.ai/bot{BOT_TOKEN}/"
 DATA_FILE = "bot_data.json"
+
+# --- توابع کمکی درخواست HTTP (بدون requests) ---
+def http_post(url, payload_json):
+    data = json.dumps(payload_json).encode()
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=30) as response:
+        return json.loads(response.read().decode())
+
+def http_get(url, params=None):
+    if params:
+        url = url + "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, method="GET")
+    with urllib.request.urlopen(req, timeout=30) as response:
+        return json.loads(response.read().decode())
 
 # --- سیستم مدیریت داده‌ها (ذخیره دائمی) ---
 def load_data():
@@ -35,7 +56,7 @@ def send_message(chat_id, text, reply_markup=None):
     if reply_markup:
         payload["reply_markup"] = reply_markup
     try:
-        requests.post(API_URL + "sendMessage", json=payload)
+        http_post(API_URL + "sendMessage", payload)
     except Exception as e:
         print(f"Error in sending message: {e}")
 
@@ -43,12 +64,12 @@ print("🚀 سیستم مدیریت پیشرفته فعال شد...")
 
 while True:
     try:
-        response = requests.get(API_URL + "getUpdates", params={"offset": last_update_id + 1, "timeout": 30}).json()
-        
+        response = http_get(API_URL + "getUpdates", params={"offset": last_update_id + 1, "timeout": 30})
+
         if response.get("ok") and response.get("result"):
             for update in response["result"]:
                 last_update_id = update["update_id"]
-                
+
                 if "message" in update:
                     msg = update["message"]
                     chat_id = msg["chat"]["id"]
@@ -57,7 +78,7 @@ while True:
                     # ۱. بررسی وضعیت مسدودی کاربر (Ban Check)
                     if chat_id in banned_users:
                         continue
-                    
+
                     # ۲. ثبت کاربر جدید در دیتابیس
                     if chat_id not in users:
                         users.add(chat_id)
@@ -83,7 +104,7 @@ while True:
                                           "📢 /broadcast [text] - ارسال پیام به همه کاربران")
                             send_message(chat_id, admin_menu)
                             continue
-                        
+
                         elif text == "/stats":
                             send_message(chat_id, f"📊 <b>گزارش وضعیت سیستم:</b>\n\n👤 کاربران فعال: {len(users)}\n🚫 کاربران مسدود شده: {len(banned_users)}")
                             continue
@@ -147,7 +168,7 @@ while True:
 
                     elif text == "ارسال اعتراف 🔥":
                         send_message(chat_id, "📝 <b>لطفاً متن اعتراف خود را بنویسید:</b>")
-                    
+
                     elif chat_id != ADMIN_ID:
                         # ارسال پیام کاربر به ادمین با دکمه‌های عملیاتی
                         admin_kb = {"inline_keyboard": [[
@@ -167,7 +188,7 @@ while True:
                         if data.startswith("reply_"):
                             admin_reply_to = int(data.split("_")[1])
                             send_message(ADMIN_ID, f"📝 <b>در حال پاسخ‌دهی به کاربر:</b> <code>{admin_reply_to}</code>\n\nلطفاً متن پاسخ را ارسال کنید:")
-                        
+
                         elif data.startswith("ban_"):
                             uid = int(data.split("_")[1])
                             if uid not in banned_users:
@@ -178,7 +199,9 @@ while True:
                             else:
                                 send_message(ADMIN_ID, "⚠️ این کاربر از قبل در لیست مسدودسازی قرار دارد.")
 
+    except urllib.error.HTTPError as e:
+        print(f"HTTP Error: {e.code} - {e.reason}")
+        time.sleep(2)
     except Exception as e:
         print(f"Critical Error: {e}")
         time.sleep(2)
-                  
