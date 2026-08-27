@@ -1584,35 +1584,24 @@ f"""
 
 def start_bot():
 
-
-    print(
-        "🌟 FPS Group Manager Started"
-    )
-
+    print("🌟 FPS Group Manager Started")
 
     try:
 
+        loop = asyncio.new_event_loop()
+
+        asyncio.set_event_loop(loop)
 
         client.start()
 
-
-        print(
-            "✅ LOGIN OK"
-        )
-
+        print("✅ LOGIN OK")
 
         client.run_until_disconnected()
 
 
-
     except Exception as e:
 
-
-        print(
-            "ERROR:",
-            e
-        )
-
+        print("ERROR:", e)
 
         traceback.print_exc()
 
