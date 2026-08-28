@@ -1,5 +1,5 @@
 # =========================================
-# 🌟 FPS Manager PRO v2 🌟
+# 🌟 FPS Manager PRO v3 🌟
 # Part 1/4
 # =========================================
 
@@ -37,8 +37,9 @@ client = SoroushClient(
 )
 
 
+
 # ===============================
-# DATABASE
+# DEFAULT SETTINGS
 # ===============================
 
 DEFAULT_GROUP = {
@@ -51,11 +52,14 @@ DEFAULT_GROUP = {
 
     "filter": True,
 
-    "rules": "📜 قوانین گروه تنظیم نشده است",
+    "auto_ban": True,
+
+    "rules": "📜 قوانین تنظیم نشده است",
 
     "filters": []
 
 }
+
 
 
 DEFAULT_DB = {
@@ -64,18 +68,25 @@ DEFAULT_DB = {
 
     "users": {},
 
-    "warnings": {},
-
     "admins": {},
 
-    "messages": {},
+    "warnings": {},
 
     "banned": {},
 
-    "muted": {}
+    "muted": {},
+
+    "messages": {},
+
+    "start_time": int(time.time())
 
 }
 
+
+
+# ===============================
+# DATABASE
+# ===============================
 
 
 def save_db():
@@ -119,19 +130,17 @@ def load_db():
             data = json.load(f)
 
 
-        # سازگاری نسخه های قدیمی
-
-        for key in DEFAULT_DB:
+        for key,value in DEFAULT_DB.items():
 
             if key not in data:
 
-                data[key] = DEFAULT_DB[key]
+                data[key] = value
 
 
         return data
 
 
-    except Exception:
+    except:
 
         return DEFAULT_DB.copy()
 
@@ -142,7 +151,7 @@ db = load_db()
 
 
 # ===============================
-# GROUP SYSTEM
+# GROUP INIT
 # ===============================
 
 
@@ -155,21 +164,18 @@ def init_group(group_id):
 
         db["groups"][gid] = DEFAULT_GROUP.copy()
 
-        db["warnings"][gid] = {}
-
         db["admins"][gid] = []
+
+        db["warnings"][gid] = {}
 
         db["banned"][gid] = []
 
         db["muted"][gid] = {}
 
-
         save_db()
 
 
     else:
-
-        # اضافه کردن امکانات جدید به گروه های قدیمی
 
         for key,value in DEFAULT_GROUP.items():
 
@@ -179,6 +185,7 @@ def init_group(group_id):
 
 
         save_db()
+
 
 
 
@@ -213,13 +220,9 @@ def save_user(
 
         }
 
+
         save_db()
 
-
-
-# ===============================
-# MESSAGE COUNT
-# ===============================
 
 
 def add_message(
@@ -235,7 +238,7 @@ def add_message(
 
 
     db["messages"][uid] += 1# =========================================
-# 🌟 FPS Manager PRO v2 🌟
+# 🌟 FPS Manager PRO v3 🌟
 # Part 2/4
 # =========================================
 
@@ -245,16 +248,14 @@ def add_message(
 # ===============================
 
 
-def is_admin(
-        group_id,
-        user_id
-):
+def is_admin(group_id, user_id):
 
     gid = str(group_id)
     uid = str(user_id)
 
 
     if uid == OWNER_ID:
+
         return True
 
 
@@ -265,10 +266,7 @@ def is_admin(
 
 
 
-def add_admin(
-        group_id,
-        user_id
-):
+def add_admin(group_id, user_id):
 
     gid = str(group_id)
     uid = str(user_id)
@@ -290,11 +288,7 @@ def add_admin(
 
 
 
-
-def remove_admin(
-        group_id,
-        user_id
-):
+def remove_admin(group_id, user_id):
 
     gid = str(group_id)
     uid = str(user_id)
@@ -313,27 +307,16 @@ def remove_admin(
 
 
 
-
-def get_admins(
-        group_id
-):
-
-    return db["admins"].get(
-        str(group_id),
-        []
-    )
-
-
-
 # ===============================
 # WARNING SYSTEM
 # ===============================
 
 
-def add_warning(
-        group_id,
-        user_id
-):
+MAX_WARNING = 3
+
+
+
+def add_warning(group_id, user_id):
 
     gid = str(group_id)
     uid = str(user_id)
@@ -357,11 +340,7 @@ def add_warning(
 
 
 
-
-def remove_warning(
-        group_id,
-        user_id
-):
+def clear_warning(group_id, user_id):
 
     gid = str(group_id)
     uid = str(user_id)
@@ -380,11 +359,7 @@ def remove_warning(
 
 
 
-
-def get_warning(
-        group_id,
-        user_id
-):
+def get_warning(group_id, user_id):
 
     return db["warnings"].get(
         str(group_id),
@@ -397,14 +372,46 @@ def get_warning(
 
 
 # ===============================
+# AUTO BAN
+# ===============================
+
+
+def auto_ban_check(group_id, user_id):
+
+    warn = get_warning(
+        group_id,
+        user_id
+    )
+
+
+    group = get_group(
+        group_id
+    )
+
+
+    if (
+        warn >= MAX_WARNING
+        and group["auto_ban"]
+    ):
+
+        ban_user(
+            group_id,
+            user_id
+        )
+
+        return True
+
+
+    return False
+
+
+
+# ===============================
 # BAN SYSTEM
 # ===============================
 
 
-def ban_user(
-        group_id,
-        user_id
-):
+def ban_user(group_id, user_id):
 
     gid = str(group_id)
     uid = str(user_id)
@@ -426,17 +433,13 @@ def ban_user(
 
 
 
-
-def unban_user(
-        group_id,
-        user_id
-):
+def unban_user(group_id, user_id):
 
     gid = str(group_id)
     uid = str(user_id)
 
 
-    if uid in db["banned"].get(gid,[]):
+    if uid in db["banned"].get(gid, []):
 
         db["banned"][gid].remove(uid)
 
@@ -449,11 +452,7 @@ def unban_user(
 
 
 
-
-def is_banned(
-        group_id,
-        user_id
-):
+def is_banned(group_id, user_id):
 
     return str(user_id) in db["banned"].get(
         str(group_id),
@@ -467,24 +466,17 @@ def is_banned(
 # ===============================
 
 
-def mute_user(
-        group_id,
-        user_id,
-        minutes
-):
+def mute_user(group_id,user_id,minutes):
 
     gid = str(group_id)
     uid = str(user_id)
 
 
-    init_group(group_id)
-
-
     db["muted"][gid][uid] = {
 
-        "time": int(time.time()),
+        "start": int(time.time()),
 
-        "duration": minutes * 60
+        "time": minutes * 60
 
     }
 
@@ -493,11 +485,7 @@ def mute_user(
 
 
 
-
-def is_muted(
-        group_id,
-        user_id
-):
+def is_muted(group_id,user_id):
 
     gid = str(group_id)
     uid = str(user_id)
@@ -516,8 +504,7 @@ def is_muted(
         return False
 
 
-
-    if time.time() - data["time"] >= data["duration"]:
+    if time.time() - data["start"] >= data["time"]:
 
         del db["muted"][gid][uid]
 
@@ -530,11 +517,7 @@ def is_muted(
 
 
 
-
-def unmute_user(
-        group_id,
-        user_id
-):
+def unmute_user(group_id,user_id):
 
     gid = str(group_id)
     uid = str(user_id)
@@ -554,47 +537,38 @@ def unmute_user(
 
 
 # ===============================
-# ANTI SPAM
+# SECURITY
 # ===============================
 
 
-spam_data = defaultdict(list)
+spam_cache = defaultdict(list)
 
 
 
-def check_spam(
-        user_id
-):
+def check_spam(user_id):
 
     now = time.time()
 
 
-    spam_data[user_id] = [
+    spam_cache[user_id] = [
 
-        x for x in spam_data[user_id]
+        x for x in spam_cache[user_id]
 
         if now - x < 8
 
     ]
 
 
-    spam_data[user_id].append(now)
+    spam_cache[user_id].append(now)
 
 
-    return len(spam_data[user_id]) >= 7
+    return len(spam_cache[user_id]) >= 7
 
 
 
-# ===============================
-# ANTI LINK
-# ===============================
+def has_link(text):
 
-
-def has_link(
-        text
-):
-
-    links = [
+    words = [
 
         "http://",
 
@@ -607,21 +581,24 @@ def has_link(
     ]
 
 
-    for x in links:
+    text = text.lower()
 
-        if x in text.lower():
+
+    for word in words:
+
+        if word in text:
 
             return True
 
 
     return False# =========================================
-# 🌟 FPS Manager PRO v2 🌟
+# 🌟 FPS Manager PRO v3 🌟
 # Part 3/4
 # =========================================
 
 
 # ===============================
-# HELP TEXT
+# HELP
 # ===============================
 
 
@@ -637,18 +614,19 @@ def help_text():
 📊 آمار
 🆔 آیدی
 🏓 پینگ
-🤖 وضعیت ربات
 ⚠️ اخطار من
 
 
 👮 دستورات مدیر:
 
 📜 تنظیم قوانین متن
+
 👑 افزودن مدیر
 ❌ حذف مدیر
 📋 لیست مدیرها
 
 ⚠️ حذف اخطار
+
 🚫 افزودن فیلتر
 ✅ حذف فیلتر
 
@@ -661,21 +639,25 @@ def help_text():
 👋 فعال خوش آمد
 👋 خاموش خوش آمد
 
+⚠️ فعال بن خودکار
+⚠️ خاموش بن خودکار
+
 👢 اخراج (با ریپلای)
 🚫 بن (با ریپلای)
-✅ آنبن (با ریپلای)
-🔇 سکوت زمان (با ریپلای)
-🔊 حذف سکوت (با ریپلای)
+✅ آنبن
+🔇 سکوت
+🔊 حذف سکوت
 
 
 👑 سازنده:
+
 پنل ادمین
 """
 
 
 
 # ===============================
-# BOT PANEL
+# OWNER PANEL
 # ===============================
 
 
@@ -687,38 +669,37 @@ def owner_panel():
 دستورات:
 
 📊 آمار کل
+👥 تعداد کاربران
+📂 تعداد گروه ها
+🤖 وضعیت ربات
 📢 پیام همگانی
-📂 لیست گروه ها
-🔄 ریست وضعیت
+
+🗑 پاک کردن دیتابیس
 """
 
 
+
 # ===============================
-# GROUP STATS
+# GLOBAL STATS
 # ===============================
 
 
-def group_stats(group_id):
-
-    gid = str(group_id)
+def global_stats():
 
     return f"""
-📊 آمار گروه
+📊 آمار کل FPS
 
-👥 کاربران ثبت شده:
+👥 کاربران:
 {len(db["users"])}
 
-⚠️ تعداد اخطار:
-{len(db["warnings"].get(gid,{}))}
+📂 گروه ها:
+{len(db["groups"])}
 
-👑 مدیرها:
-{len(db["admins"].get(gid,[]))}
+⚠️ اخطارها:
+{len(db["warnings"])}
 
-🚫 بن شده:
-{len(db["banned"].get(gid,[]))}
-
-🤖 وضعیت:
-فعال ✅
+🕒 شروع:
+{datetime.fromtimestamp(db["start_time"])}
 """
 
 
@@ -728,26 +709,23 @@ def group_stats(group_id):
 # ===============================
 
 
-async def handle_commands(
-        event,
-        group_id,
-        user_id
-):
+async def handle_commands(event,group_id,user_id):
+
 
     text = event.raw_text.strip()
 
-    group = get_group(group_id)
+
+    group = get_group(
+        group_id
+    )
 
 
-    # -------------------------------
     # عمومی
-    # -------------------------------
-
 
     if text in [
         "راهنما",
-        "/help",
-        "کمک"
+        "کمک",
+        "/help"
     ]:
 
         await event.reply(
@@ -761,18 +739,8 @@ async def handle_commands(
     if text == "قوانین":
 
         await event.reply(
-            "📜 قوانین گروه:\n\n"
+            "📜 قوانین:\n\n"
             + group["rules"]
-        )
-
-        return True
-
-
-
-    if text == "آمار":
-
-        await event.reply(
-            group_stats(group_id)
         )
 
         return True
@@ -796,7 +764,17 @@ f"""
     if text == "پینگ":
 
         await event.reply(
-            "🏓 پینگ ربات خوبه ✅"
+            "🏓 پینگ FPS عالیه ✅"
+        )
+
+        return True
+
+
+
+    if text == "آمار":
+
+        await event.reply(
+            global_stats()
         )
 
         return True
@@ -807,9 +785,9 @@ f"""
 
         await event.reply(
 f"""
-⚠️ تعداد اخطار شما:
+⚠️ اخطار شما:
 
-{get_warning(group_id,user_id)}
+{get_warning(group_id,user_id)}/3
 """
         )
 
@@ -817,9 +795,9 @@ f"""
 
 
 
-    # -------------------------------
-    # پنل سازنده
-    # -------------------------------
+    # ===========================
+    # OWNER PANEL
+    # ===========================
 
 
     if text == "پنل ادمین":
@@ -833,17 +811,57 @@ f"""
         else:
 
             await event.reply(
-                "❌ این بخش فقط مخصوص سازنده است"
+                "❌ این پنل فقط برای سازنده است"
             )
 
         return True
 
 
 
-    # -------------------------------
-    # فقط مدیر
-    # -------------------------------
+    if str(user_id) == OWNER_ID:
 
+
+        if text == "آمار کل":
+
+            await event.reply(
+                global_stats()
+            )
+
+            return True
+
+
+
+        if text == "تعداد کاربران":
+
+            await event.reply(
+f"👥 تعداد کاربران: {len(db['users'])}"
+            )
+
+            return True
+
+
+
+        if text == "تعداد گروه ها":
+
+            await event.reply(
+f"📂 تعداد گروه ها: {len(db['groups'])}"
+            )
+
+            return True
+
+
+
+        if text == "وضعیت ربات":
+
+            await event.reply(
+                "🤖 FPS Manager فعال است ✅"
+            )
+
+            return True
+
+
+
+    # فقط مدیر
 
     if not is_admin(
         group_id,
@@ -854,9 +872,7 @@ f"""
 
 
 
-    if text.startswith(
-        "تنظیم قوانین "
-    ):
+    if text.startswith("تنظیم قوانین "):
 
         group["rules"] = text.replace(
             "تنظیم قوانین ",
@@ -873,52 +889,31 @@ f"""
 
 
 
+    if text == "فعال بن خودکار":
 
-    if text.startswith(
-        "افزودن مدیر "
-    ):
+        group["auto_ban"] = True
 
-        uid = text.replace(
-            "افزودن مدیر ",
-            ""
+        save_db()
+
+        await event.reply(
+            "⚠️ بن خودکار فعال شد"
         )
-
-
-        if add_admin(
-            group_id,
-            uid
-        ):
-
-            await event.reply(
-                "👑 مدیر اضافه شد"
-            )
 
         return True
 
 
 
+    if text == "خاموش بن خودکار":
 
-    if text.startswith(
-        "حذف مدیر "
-    ):
+        group["auto_ban"] = False
 
-        uid = text.replace(
-            "حذف مدیر ",
-            ""
+        save_db()
+
+        await event.reply(
+            "⚠️ بن خودکار خاموش شد"
         )
 
-
-        if remove_admin(
-            group_id,
-            uid
-        ):
-
-            await event.reply(
-                "❌ مدیر حذف شد"
-            )
-
         return True
-
 
 
 
@@ -936,7 +931,6 @@ f"""
 
 
 
-
     if text == "خاموش ضد لینک":
 
         group["anti_link"] = False
@@ -951,60 +945,28 @@ f"""
 
 
 
-
-    if text == "فعال ضد اسپم":
-
-        group["anti_spam"] = True
-
-        save_db()
-
-        await event.reply(
-            "🛡 ضد اسپم فعال شد"
-        )
-
-        return True
-
-
-
-    if text == "خاموش ضد اسپم":
-
-        group["anti_spam"] = False
-
-        save_db()
-
-        await event.reply(
-            "🛡 ضد اسپم خاموش شد"
-        )
-
-        return True
-
-
-
     return False# =========================================
-# 🌟 FPS Manager PRO v2 🌟
+# 🌟 FPS Manager PRO v3 🌟
 # Part 4/4
 # =========================================
 
 
 # ===============================
-# WELCOME SYSTEM
+# WELCOME
 # ===============================
 
 
-async def welcome_user(event):
+async def send_welcome(event):
 
     try:
 
         chat = await event.get_chat()
 
-        group_id = chat.id
-
-        group = get_group(group_id)
-
-
-        if not group["welcome"]:
-
-            return
+        title = getattr(
+            chat,
+            "title",
+            "گروه"
+        )
 
 
         users = getattr(
@@ -1029,9 +991,9 @@ f"""
 
 سلام {name} عزیز 👋
 
-به گروه {getattr(chat,"title","گروه")} خوش آمدید 🌹
+به گروه {title} خوش آمدید 🌹
 
-برای مشاهده دستورات:
+برای مشاهده امکانات ربات:
 
 📚 راهنما
 
@@ -1047,7 +1009,7 @@ f"""
 
 
 # ===============================
-# MESSAGE HANDLER
+# MESSAGE EVENT
 # ===============================
 
 
@@ -1055,6 +1017,7 @@ f"""
 async def message_handler(event):
 
     try:
+
 
         text = event.raw_text.strip()
 
@@ -1065,6 +1028,7 @@ async def message_handler(event):
         if not sender:
 
             return
+
 
 
         user_id = sender.id
@@ -1093,7 +1057,7 @@ async def message_handler(event):
 
 
         # ===========================
-        # PRIVATE
+        # PV BOT
         # ===========================
 
 
@@ -1102,6 +1066,24 @@ async def message_handler(event):
             "megagroup",
             False
         ):
+
+
+            if text == "پنل ادمین":
+
+                if str(user_id) == OWNER_ID:
+
+                    await event.reply(
+                        owner_panel()
+                    )
+
+                else:
+
+                    await event.reply(
+                        "❌ دسترسی ندارید"
+                    )
+
+                return
+
 
 
             await event.reply(
@@ -1114,7 +1096,7 @@ f"""
 
 من برای مدیریت گروه ساخته شدم.
 
-💯 امکانات:
+امکانات:
 
 🛡 ضد اسپم
 🔗 ضد لینک
@@ -1122,8 +1104,7 @@ f"""
 ⚠️ سیستم اخطار
 👑 مدیریت مدیران
 
-برای استفاده:
-ربات را به گروه اضافه کن و در گروه بنویس:
+ربات را به گروه خود اضافه کن و بنویس:
 
 📚 راهنما
 """
@@ -1132,6 +1113,10 @@ f"""
             return
 
 
+
+        # ===========================
+        # GROUP
+        # ===========================
 
 
         group_id = chat.id
@@ -1143,10 +1128,7 @@ f"""
 
 
 
-        # ===========================
-        # BAN CHECK
-        # ===========================
-
+        # بن شده
 
         if is_banned(
             group_id,
@@ -1157,10 +1139,7 @@ f"""
 
 
 
-        # ===========================
-        # MUTE CHECK
-        # ===========================
-
+        # سکوت
 
         if is_muted(
             group_id,
@@ -1171,10 +1150,7 @@ f"""
 
 
 
-        # ===========================
-        # ANTI LINK
-        # ===========================
-
+        # ضد لینک
 
         if group["anti_link"]:
 
@@ -1191,24 +1167,39 @@ f"""
                     )
 
 
-                    await event.reply(
+                    if auto_ban_check(
+                        group_id,
+                        user_id
+                    ):
+
+
+                        await event.reply(
 f"""
-🔗 لینک غیرمجاز حذف شد
+🚫 کاربر به دلیل رسیدن به ۳ اخطار بن شد.
 
 ⚠️ اخطار:
-{warn}
+{warn}/3
 """
-                    )
+                        )
+
+                    else:
+
+                        await event.reply(
+f"""
+🔗 لینک غیرمجاز
+
+⚠️ اخطار:
+{warn}/3
+"""
+                        )
+
 
                     return
 
 
 
 
-        # ===========================
-        # ANTI SPAM
-        # ===========================
-
+        # ضد اسپم
 
         if group["anti_spam"]:
 
@@ -1216,29 +1207,30 @@ f"""
                 user_id
             ):
 
+
                 warn = add_warning(
                     group_id,
                     user_id
                 )
 
 
-                await event.reply(
-f"""
-🛡 اسپم شناسایی شد
+                if auto_ban_check(
+                    group_id,
+                    user_id
+                ):
 
-⚠️ اخطار:
-{warn}
-"""
-                )
+                    await event.reply(
+                        "🚫 کاربر با ۳ اخطار بن شد"
+                    )
+
+                else:
+
+                    await event.reply(
+f"🛡 اسپم شناسایی شد\n⚠️ {warn}/3"
+                    )
 
                 return
 
-
-
-
-        # ===========================
-        # COMMANDS
-        # ===========================
 
 
         await handle_commands(
@@ -1248,6 +1240,7 @@ f"""
         )
 
 
+
     except Exception:
 
         traceback.print_exc()
@@ -1255,7 +1248,7 @@ f"""
 
 
 # ===============================
-# START
+# START BOT
 # ===============================
 
 
