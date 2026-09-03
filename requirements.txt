@@ -1,4 +1,0 @@
-SPlusthon==1.1.3
-aiohttp
-pyaes
-rsa
