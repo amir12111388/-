@@ -28,7 +28,7 @@ from telegram.ext import (
 # CONFIG
 # ===============================
 
-BOT_TOKEN = "TOKEN_HERE"
+BOT_TOKEN = "8672916913:AAFGoB6vIijAfgggaFRO-rePf6SFoen4XYc"
 
 OWNER_ID = 1382377947
 
